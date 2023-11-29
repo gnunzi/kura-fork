@@ -112,7 +112,7 @@ final class WireSupportImpl implements WireSupport, MultiportWireSupport {
                 final int outputPort = (Integer) w.getProperties().get(WIRE_EMITTER_PORT_PROP_NAME.value());
                 ((PortImpl) this.emitterPorts.get(outputPort)).connectedWires.add(w);
             } catch (Exception e) {
-                logger.warn("Failed to assign outgoing wire to port", e);
+                logger.warn("Failed to assign outgoing wire to port in wire component {}", kuraServicePid, e);
             }
         }
     }
