@@ -17,7 +17,6 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +56,7 @@ import org.eclipse.kura.net.status.vlan.VlanInterfaceStatus.VlanInterfaceStatusB
 import org.eclipse.kura.net.status.wifi.WifiAccessPoint;
 import org.eclipse.kura.net.status.wifi.WifiAccessPoint.WifiAccessPointBuilder;
 import org.eclipse.kura.net.status.wifi.WifiCapability;
+import org.eclipse.kura.net.status.wifi.WifiFlag;
 import org.eclipse.kura.net.status.wifi.WifiInterfaceStatus;
 import org.eclipse.kura.net.status.wifi.WifiInterfaceStatus.WifiInterfaceStatusBuilder;
 import org.eclipse.kura.net.status.wifi.WifiMode;
@@ -74,6 +74,7 @@ import org.eclipse.kura.nm.enums.MMModemPowerState;
 import org.eclipse.kura.nm.enums.MMModemState;
 import org.eclipse.kura.nm.enums.MMSimEsimStatus;
 import org.eclipse.kura.nm.enums.MMSimType;
+import org.eclipse.kura.nm.enums.NM80211ApFlags;
 import org.eclipse.kura.nm.enums.NM80211ApSecurityFlags;
 import org.eclipse.kura.nm.enums.NM80211Mode;
 import org.eclipse.kura.nm.enums.NMDeviceState;
@@ -421,6 +422,9 @@ public class NMStatusConverter {
                 .fromUInt32(nmAccessPoint.Get(NM_ACCESSPOINT_BUS_NAME, "RsnFlags"));
         builder.withRsnSecurity(wifiSecurityFlagConvert(rsnSecurityFlags));
 
+        List<NM80211ApFlags> flags = NM80211ApFlags.fromUInt32(nmAccessPoint.Get(NM_ACCESSPOINT_BUS_NAME, "Flags"));
+        builder.withFlags(wifiFlagConvert(flags));
+
         return builder.build();
     }
 
@@ -449,6 +453,9 @@ public class NMStatusConverter {
     private static Set<WifiSecurity> wifiSecurityFlagConvert(List<NM80211ApSecurityFlags> nmSecurityFlags) {
         List<WifiSecurity> kuraSecurityFlags = new ArrayList<>();
 
+        if (nmSecurityFlags.isEmpty()) {
+            kuraSecurityFlags.add(WifiSecurity.NONE);
+        }
         for (NM80211ApSecurityFlags nmFlag : nmSecurityFlags) {
             kuraSecurityFlags.add(wifiSecurityFlagConvert(nmFlag));
         }
@@ -490,6 +497,36 @@ public class NMStatusConverter {
             return WifiSecurity.KEY_MGMT_EAP_SUITE_B_192;
         default:
             throw new IllegalArgumentException(String.format("Non convertible NM80211ApSecurityFlag \"%s\"", nmFlag));
+        }
+    }
+
+    private static Set<WifiFlag> wifiFlagConvert(List<NM80211ApFlags> nmFlags) {
+        List<WifiFlag> kuraFlags = new ArrayList<>();
+
+        if (nmFlags.isEmpty()) {
+            kuraFlags.add(WifiFlag.NONE);
+        }
+        for (NM80211ApFlags nmFlag : nmFlags) {
+            kuraFlags.add(wifiFlagConvert(nmFlag));
+        }
+
+        return new HashSet<>(kuraFlags);
+    }
+
+    private static WifiFlag wifiFlagConvert(NM80211ApFlags nmFlag) {
+        switch (nmFlag) {
+        case NM_802_11_AP_FLAGS_NONE:
+            return WifiFlag.NONE;
+        case NM_802_11_AP_FLAGS_PRIVACY:
+            return WifiFlag.PRIVACY;
+        case NM_802_11_AP_FLAGS_WPS:
+            return WifiFlag.WPS;
+        case NM_802_11_AP_FLAGS_WPS_PBC:
+            return WifiFlag.WPS_PBC;
+        case NM_802_11_AP_FLAGS_WPS_PIN:
+            return WifiFlag.WPS_PIN;
+        default:
+            throw new IllegalArgumentException(String.format("Non convertible NM80211ApFlag \"%s\"", nmFlag));
         }
     }
 
@@ -610,7 +647,7 @@ public class NMStatusConverter {
             builder.withHardwareRevision(properties.Get(MM_MODEM_BUS_NAME, "HardwareRevision"));
             builder.withPrimaryPort(properties.Get(MM_MODEM_BUS_NAME, "PrimaryPort"));
             builder.withPorts(getPorts(properties));
-            builder.withSupportedModemCapabilities(getModemSupportedCapabilities(properties));
+            builder.withAllSupportedModemCapabilities(getModemSupportedCapabilities(properties));
             builder.withCurrentModemCapabilities(getModemCurrentCapabilities(properties));
             builder.withPowerState(
                     MMModemPowerState.toModemPowerState(properties.Get(MM_MODEM_BUS_NAME, "PowerState")));
@@ -648,10 +685,11 @@ public class NMStatusConverter {
         return ports;
     }
 
-    private static Set<ModemCapability> getModemSupportedCapabilities(Properties properties) {
-        EnumSet<ModemCapability> modemCapabilities = EnumSet.noneOf(ModemCapability.class);
+    private static List<Set<ModemCapability>> getModemSupportedCapabilities(Properties properties) {
+        List<Set<ModemCapability>> modemCapabilities = new ArrayList<>();
         List<UInt32> capabilities = properties.Get(MM_MODEM_BUS_NAME, "SupportedCapabilities");
-        capabilities.forEach(capability -> modemCapabilities.add(MMModemCapability.toModemCapability(capability)));
+        capabilities.forEach(
+                capability -> modemCapabilities.add(MMModemCapability.toModemCapabilitiesFromBitMask(capability)));
         return modemCapabilities;
     }
 
@@ -759,6 +797,7 @@ public class NMStatusConverter {
             logger.warn("Eid property not found.");
         }
         String operatorName = simProperties.Get(MM_SIM_BUS_NAME, "OperatorName");
+        String operatorIdentifier = simProperties.Get(MM_SIM_BUS_NAME, "OperatorIdentifier");
         SimType simType = SimType.PHYSICAL;
         ESimStatus eSimStatus = ESimStatus.UNKNOWN;
         try {
@@ -771,7 +810,8 @@ public class NMStatusConverter {
         }
 
         return Sim.builder().withActive(isActive).withPrimary(isPrimary).withIccid(iccid).withImsi(imsi).withEid(eid)
-                .withOperatorName(operatorName).withSimType(simType).withESimStatus(eSimStatus).build();
+                .withOperatorName(operatorName).withOperatorIdentifier(operatorIdentifier).withSimType(simType)
+                .withESimStatus(eSimStatus).build();
     }
 
     private static List<Bearer> getBearers(List<Properties> properties) {

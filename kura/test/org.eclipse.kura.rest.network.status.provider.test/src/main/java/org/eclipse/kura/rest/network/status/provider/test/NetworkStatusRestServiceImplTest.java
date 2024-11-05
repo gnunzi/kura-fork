@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Eurotech and/or its affiliates and others
+ * Copyright (c) 2023, 2024 Eurotech and/or its affiliates and others
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -63,6 +63,7 @@ import org.eclipse.kura.net.status.modem.SimType;
 import org.eclipse.kura.net.status.wifi.WifiAccessPoint;
 import org.eclipse.kura.net.status.wifi.WifiCapability;
 import org.eclipse.kura.net.status.wifi.WifiChannel;
+import org.eclipse.kura.net.status.wifi.WifiFlag;
 import org.eclipse.kura.net.status.wifi.WifiInterfaceStatus;
 import org.eclipse.kura.net.status.wifi.WifiMode;
 import org.eclipse.kura.net.status.wifi.WifiSecurity;
@@ -136,7 +137,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
     }
 
     @Test
-    public void shouldRportGeneralExceptionGettingAllInterfacesStatus() {
+    public void shouldReportGeneralExceptionGettingAllInterfacesStatus() {
         givenExceptionThrownByNetworkStatusServiceMethods(new IllegalStateException("exception message"));
 
         whenRequestIsPerformed(new MethodSpec("GET"), NETWORK_STATUS_PATH);
@@ -648,6 +649,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 .withSignalStrength(-94) //
                 .withWpaSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.KEY_MGMT_SAE)) //
                 .withRsnSecurity(EnumSet.of(WifiSecurity.KEY_MGMT_EAP_SUITE_B_192)) //
+                .withFlags(EnumSet.of(WifiFlag.PRIVACY)) //
                 .build())) //
         );
 
@@ -667,7 +669,8 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"signalQuality\":12," //
                 + "\"signalStrength\":-94," //
                 + "\"wpaSecurity\":[\"GROUP_CCMP\",\"KEY_MGMT_SAE\"]," //
-                + "\"rsnSecurity\":[\"KEY_MGMT_EAP_SUITE_B_192\"]}," //
+                + "\"rsnSecurity\":[\"KEY_MGMT_EAP_SUITE_B_192\"]," //
+                + "\"flags\":[\"PRIVACY\"]}," //
                 + "\"availableWifiAccessPoints\":[]," //
                 + "\"id\":\"N/A\"," //
                 + "\"interfaceName\":\"N/A\"," //
@@ -697,6 +700,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                         .withSignalStrength(-94) //
                         .withWpaSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.KEY_MGMT_SAE)) //
                         .withRsnSecurity(EnumSet.of(WifiSecurity.KEY_MGMT_EAP_SUITE_B_192)) //
+                        .withFlags(EnumSet.of(WifiFlag.PRIVACY, WifiFlag.WPS)) //
                         .build())));
 
         whenRequestIsPerformed(new MethodSpec("GET"), NETWORK_STATUS_PATH);
@@ -715,7 +719,8 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"signalQuality\":12," //
                 + "\"signalStrength\":-94," //
                 + "\"wpaSecurity\":[\"GROUP_CCMP\",\"KEY_MGMT_SAE\"]," //
-                + "\"rsnSecurity\":[\"KEY_MGMT_EAP_SUITE_B_192\"]}]," //
+                + "\"rsnSecurity\":[\"KEY_MGMT_EAP_SUITE_B_192\"]," //
+                + "\"flags\":[\"PRIVACY\",\"WPS\"]}]," //
                 + "\"id\":\"N/A\"," //
                 + "\"interfaceName\":\"N/A\"," //
                 + "\"hardwareAddress\":\"00:00:00:00:00:00\"," //
@@ -747,7 +752,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"hardwareRevision\":\"N/A\"," //
                 + "\"primaryPort\":\"N/A\"," //
                 + "\"ports\":{}," //
-                + "\"supportedModemCapabilities\":[\"NONE\"]," //
+                + "\"supportedModemCapabilities\":[]," //
                 + "\"currentModemCapabilities\":[\"NONE\"]," //
                 + "\"powerState\":\"UNKNOWN\"," //
                 + "\"supportedModes\":[]," //
@@ -791,7 +796,8 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 .withHardwareRevision("hwrev") //
                 .withPrimaryPort("port") //
                 .withPorts(Collections.singletonMap("foo", ModemPortType.AUDIO)) //
-                .withSupportedModemCapabilities(EnumSet.of(ModemCapability.EVDO, ModemCapability.GSM_UMTS)) //
+                .withAllSupportedModemCapabilities(
+                        Arrays.asList(EnumSet.of(ModemCapability.EVDO, ModemCapability.GSM_UMTS)))
                 .withCurrentModemCapabilities(EnumSet.of(ModemCapability.IRIDIUM, ModemCapability.LTE)) //
                 .withPowerState(ModemPowerState.OFF) //
                 .withSupportedModes(Collections.singleton(
@@ -873,7 +879,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"hardwareRevision\":\"N/A\"," //
                 + "\"primaryPort\":\"N/A\"," //
                 + "\"ports\":{}," //
-                + "\"supportedModemCapabilities\":[\"NONE\"]," //
+                + "\"supportedModemCapabilities\":[]," //
                 + "\"currentModemCapabilities\":[\"NONE\"]," //
                 + "\"powerState\":\"UNKNOWN\"," //
                 + "\"supportedModes\":[]," //
@@ -929,6 +935,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                         .withImsi("imsi") //
                         .withEid("sed") //
                         .withOperatorName("op") //
+                        .withOperatorIdentifier("id") //
                         .withSimType(SimType.PHYSICAL) //
                         .withESimStatus(ESimStatus.UNKNOWN).build(), //
                 Sim.builder() //
@@ -938,6 +945,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                         .withImsi("isi") //
                         .withEid("se") //
                         .withOperatorName("opp") //
+                        .withOperatorIdentifier("idd") //
                         .withSimType(SimType.ESIM) //
                         .withESimStatus(ESimStatus.WITH_PROFILES) //
                         .build())));
@@ -953,7 +961,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"hardwareRevision\":\"N/A\"," //
                 + "\"primaryPort\":\"N/A\"," //
                 + "\"ports\":{}," //
-                + "\"supportedModemCapabilities\":[\"NONE\"]," //
+                + "\"supportedModemCapabilities\":[]," //
                 + "\"currentModemCapabilities\":[\"NONE\"]," //
                 + "\"powerState\":\"UNKNOWN\"," //
                 + "\"supportedModes\":[]," //
@@ -968,6 +976,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"imsi\":\"imsi\"," //
                 + "\"eid\":\"sed\"," //
                 + "\"operatorName\":\"op\"," //
+                + "\"operatorIdentifier\":\"id\"," //
                 + "\"simType\":\"PHYSICAL\"," //
                 + "\"eSimStatus\":\"UNKNOWN\"}," //
                 + "{\"active\":false," //
@@ -976,6 +985,7 @@ public class NetworkStatusRestServiceImplTest extends AbstractRequestHandlerTest
                 + "\"imsi\":\"isi\"," //
                 + "\"eid\":\"se\"," //
                 + "\"operatorName\":\"opp\"," //
+                + "\"operatorIdentifier\":\"idd\"," //
                 + "\"simType\":\"ESIM\"," //
                 + "\"eSimStatus\":\"WITH_PROFILES\"}]," //
                 + "\"simLocked\":false," //
