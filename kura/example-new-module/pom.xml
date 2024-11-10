@@ -31,7 +31,10 @@
         <dependency>
             <groupId>org.eclipse.kura</groupId>
             <artifactId>org.eclipse.kura.api</artifactId>
+            <!-- If use snapshot release, then update it after every release-->
             <version>3.0.0-SNAPSHOT</version>
+            <!-- Open ended release versions don't need to be updated -->
+            <!-- <version>[2.7.0,)</version> -->
         </dependency>
         <!-- OSGi dependencies -->
         <dependency>
